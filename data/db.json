@@ -23,20 +23,6 @@
       ],
       "perPerson": 450000,
       "createdAt": "2026-06-12T20:58:29.950Z"
-    },
-    {
-      "id": "b8e672b6-0249-4a85-b096-6a18f43b98e2",
-      "date": "2026-05-04",
-      "note": "Buổi nhậu",
-      "totalAmount": 1643000,
-      "participants": [
-        "Hải",
-        "A.Tiến",
-        "Khuyên",
-        "Dũng"
-      ],
-      "perPerson": 410750,
-      "createdAt": "2026-06-12T20:57:57.181Z"
     }
   ]
 }
