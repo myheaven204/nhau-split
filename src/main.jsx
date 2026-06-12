@@ -5,6 +5,7 @@ import './styles.css';
 
 const PEOPLE_KEY = 'nhau-split.people.v1';
 const SESSIONS_KEY = 'nhau-split.sessions.v1';
+const PAID_KEY = 'nhau-split.paid.v1';
 const DEFAULT_PEOPLE = ['Duy', 'Hải', 'Tú', 'Nam', 'Khoa'];
 
 const today = () => {
@@ -30,6 +31,7 @@ const save = (key, value) => localStorage.setItem(key, JSON.stringify(value));
 function App() {
   const [people, setPeople] = useState(() => load(PEOPLE_KEY, DEFAULT_PEOPLE));
   const [sessions, setSessions] = useState(() => load(SESSIONS_KEY, []));
+  const [paidPeople, setPaidPeople] = useState(() => load(PAID_KEY, []));
   const [date, setDate] = useState(today());
   const [note, setNote] = useState('');
   const [amountText, setAmountText] = useState('');
@@ -55,6 +57,10 @@ function App() {
         if (Array.isArray(data.sessions)) {
           setSessions(data.sessions);
           save(SESSIONS_KEY, data.sessions);
+        }
+        if (Array.isArray(data.paidPeople)) {
+          setPaidPeople(data.paidPeople);
+          save(PAID_KEY, data.paidPeople);
         }
         setCloudStatus('cloud-loaded');
       })
@@ -133,14 +139,15 @@ function App() {
     return { total, rows, top: rows[0], chart };
   }, [sessions]);
 
-  const pushCloud = async (nextPeople, nextSessions, password = adminPassword) => {
+  const pushCloud = async (nextPeople, nextSessions, nextPaidPeople = paidPeople, password = adminPassword) => {
     save(PEOPLE_KEY, nextPeople);
     save(SESSIONS_KEY, nextSessions);
+    save(PAID_KEY, nextPaidPeople);
     try {
       const res = await fetch('/api/data', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-admin-password': password },
-        body: JSON.stringify({ people: nextPeople, sessions: nextSessions }),
+        body: JSON.stringify({ people: nextPeople, sessions: nextSessions, paidPeople: nextPaidPeople }),
       });
       if (!res.ok) throw new Error((await res.json()).error || 'Không lưu được cloud');
       setCloudStatus('cloud-saved');
@@ -152,8 +159,9 @@ function App() {
     }
   };
 
-  const persistPeople = async (next) => { setPeople(next); await pushCloud(next, sessions); };
-  const persistSessions = async (next) => { setSessions(next); await pushCloud(people, next); };
+  const persistPeople = async (next) => { setPeople(next); await pushCloud(next, sessions, paidPeople); };
+  const persistSessions = async (next) => { setSessions(next); await pushCloud(people, next, paidPeople); };
+  const persistPaidPeople = async (next) => { setPaidPeople(next); await pushCloud(people, sessions, next); };
 
   const togglePerson = (name) => {
     setSelected((cur) => cur.includes(name) ? cur.filter((x) => x !== name) : [...cur, name]);
@@ -161,7 +169,7 @@ function App() {
 
   const loginAdmin = async () => {
     if (!loginPassword.trim()) return;
-    const ok = await pushCloud(people, sessions, loginPassword.trim());
+    const ok = await pushCloud(people, sessions, paidPeople, loginPassword.trim());
     if (!ok) return alert('Sai mật khẩu admin hoặc cloud chưa cấu hình.');
     setAdminPassword(loginPassword.trim());
     sessionStorage.setItem('nhau-split-admin', '1');
@@ -188,7 +196,14 @@ function App() {
   const removePerson = (name) => {
     if (!canEdit) return;
     persistPeople(people.filter((x) => x !== name));
+    persistPaidPeople(paidPeople.filter((x) => x !== name));
     setSelected(selected.filter((x) => x !== name));
+  };
+
+  const togglePaid = (name) => {
+    if (!canEdit) return;
+    const next = paidPeople.includes(name) ? paidPeople.filter((x) => x !== name) : [...paidPeople, name];
+    persistPaidPeople(next);
   };
 
   const addSession = () => {
@@ -288,17 +303,23 @@ function App() {
             {!personTotals.length && <p className="empty">Chưa có dữ liệu để cộng tổng.</p>}
             {!!personTotals.length && (
               <div className="totals-list">
+                <div className="totals-head"><span></span><b>Done</b></div>
                 {personTotals.map((person, index) => (
                   <div className={`total-item rank-${index + 1}`} key={person.name}>
-                    <button className="total-row" onClick={() => setExpandedPerson(expandedPerson === person.name ? null : person.name)}>
-                      <div className="total-rank">#{index + 1}</div>
-                      <div className="total-info">
-                        <strong>{person.name}</strong>
-                        <small>{person.count} buổi tham gia · bấm để xem chi tiết</small>
-                        <div className="total-progress"><i style={{ width: `${Math.max(8, Math.round((person.total / maxPersonTotal) * 100))}%` }} /></div>
-                      </div>
-                      <b>{money(person.total)}</b>
-                    </button>
+                    <div className="total-row-wrap">
+                      <button className="total-row" onClick={() => setExpandedPerson(expandedPerson === person.name ? null : person.name)}>
+                        <div className="total-rank">#{index + 1}</div>
+                        <div className="total-info">
+                          <strong>{person.name}</strong>
+                          <small>{person.count} buổi tham gia · bấm để xem chi tiết</small>
+                          <div className="total-progress"><i style={{ width: `${Math.max(8, Math.round((person.total / maxPersonTotal) * 100))}%` }} /></div>
+                        </div>
+                        <b>{money(person.total)}</b>
+                      </button>
+                      <label className={paidPeople.includes(person.name) ? 'paid-check active' : 'paid-check'} title={paidPeople.includes(person.name) ? 'Đã thanh toán' : 'Chưa thanh toán'}>
+                        <input type="checkbox" checked={paidPeople.includes(person.name)} disabled={!canEdit} onChange={() => togglePaid(person.name)} />
+                      </label>
+                    </div>
                     {expandedPerson === person.name && (
                       <div className="person-trips">
                         <div className="trip-summary">

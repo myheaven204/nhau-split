@@ -85,9 +85,12 @@ input:focus { border-color: #d6a84f; box-shadow: 0 0 0 4px rgba(214,168,79,.10);
 .bar { grid-column: 2 / -1; height: 7px; border-radius: 999px; background: rgba(255,255,255,.08); overflow: hidden; }
 .bar i { display: block; height: 100%; border-radius: 999px; box-shadow: 0 0 16px currentColor; animation: popIn .28s ease-out both; }
 .totals-list { display: grid; gap: 12px; }
+.totals-head { display: grid; grid-template-columns: 1fr 54px; align-items: center; padding: 0 14px 0 0; color: #a1a1aa; font-size: 11px; text-transform: uppercase; letter-spacing: .12em; }
+.totals-head b { text-align: center; color: #d6a84f; }
 .total-item { position: relative; border: 1px solid rgba(255,255,255,.085); border-radius: 22px; background: linear-gradient(135deg, rgba(255,255,255,.060), rgba(255,255,255,.025)); overflow: hidden; box-shadow: inset 0 1px 0 rgba(255,255,255,.045); }
 .total-item::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 3px; background: linear-gradient(180deg, #d6a84f, #8f6b32); opacity: .55; }
 .total-item.rank-1 { border-color: rgba(214,168,79,.22); background: linear-gradient(135deg, rgba(214,168,79,.075), rgba(255,255,255,.030)); }
+.total-row-wrap { display: grid; grid-template-columns: 1fr 54px; align-items: stretch; }
 .total-row { width: 100%; display: grid; grid-template-columns: 48px 1fr auto; align-items: center; gap: 14px; padding: 15px 16px; border: 0; color: #f8fafc; background: transparent; text-align: left; cursor: pointer; position: relative; }
 .total-rank { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 15px; background: rgba(214,168,79,.08); border: 1px solid rgba(214,168,79,.16); color: #d6a84f; font-weight: 900; box-shadow: 0 10px 24px rgba(0,0,0,.14); }
 .total-info { min-width: 0; }
@@ -97,6 +100,10 @@ input:focus { border-color: #d6a84f; box-shadow: 0 0 0 4px rgba(214,168,79,.10);
 .total-row b { color: #e7c071; font-size: 20px; white-space: nowrap; padding: 7px 10px; border-radius: 14px; background: rgba(214,168,79,.075); border: 1px solid rgba(214,168,79,.12); letter-spacing: -.02em; }
 .total-progress { height: 7px; margin-top: 10px; border-radius: 999px; background: rgba(255,255,255,.08); overflow: hidden; }
 .total-progress i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #8f6b32, #d6a84f); box-shadow: 0 0 12px rgba(214,168,79,.18); }
+.paid-check { user-select: none; display: grid; place-items: center; border-left: 1px solid rgba(255,255,255,.07); cursor: pointer; }
+.paid-check input { width: 18px; height: 18px; accent-color: #d6a84f; cursor: pointer; margin: 0; }
+.paid-check input:disabled { cursor: not-allowed; }
+.paid-check.active { background: rgba(34,197,94,.08); }
 .person-trips { display: grid; gap: 10px; margin: 0 14px 14px; padding: 13px; border-radius: 20px; background: rgba(0,0,0,.20); border: 1px solid rgba(255,255,255,.08); animation: popIn .18s ease-out both; }
 .trip-summary { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 2px 2px 8px; border-bottom: 1px solid rgba(255,255,255,.08); color: #e7d7b0; font-size: 13px; font-weight: 900; }
 .trip-summary b { color: #e7c071; font-size: 12px; padding: 5px 9px; border-radius: 999px; background: rgba(214,168,79,.075); border: 1px solid rgba(214,168,79,.12); }
