@@ -104,6 +104,8 @@ function App() {
     return map;
   }, [personTotals, sortedSessions]);
 
+  const maxPersonTotal = personTotals[0]?.total || 1;
+
   const monthlyDrinkers = useMemo(() => {
     const colors = ['#f97316', '#facc15', '#22c55e', '#38bdf8', '#a78bfa', '#fb7185', '#14b8a6', '#e879f9'];
     const map = new Map();
@@ -286,22 +288,29 @@ function App() {
             {!personTotals.length && <p className="empty">Chưa có dữ liệu để cộng tổng.</p>}
             {!!personTotals.length && (
               <div className="totals-list">
-                {personTotals.map((person) => (
-                  <div className="total-item" key={person.name}>
+                {personTotals.map((person, index) => (
+                  <div className={`total-item rank-${index + 1}`} key={person.name}>
                     <button className="total-row" onClick={() => setExpandedPerson(expandedPerson === person.name ? null : person.name)}>
-                      <div>
+                      <div className="total-rank">#{index + 1}</div>
+                      <div className="total-info">
                         <strong>{person.name}</strong>
-                        <small>{person.count} buổi tham gia · bấm để xem đã đi đâu</small>
+                        <small>{person.count} buổi tham gia · bấm để xem chi tiết</small>
+                        <div className="total-progress"><i style={{ width: `${Math.max(8, Math.round((person.total / maxPersonTotal) * 100))}%` }} /></div>
                       </div>
                       <b>{money(person.total)}</b>
                     </button>
                     {expandedPerson === person.name && (
                       <div className="person-trips">
-                        {(sessionsByPerson.get(person.name) || []).map((session) => (
+                        <div className="trip-summary">
+                          <span>Chi tiết kèo của {person.name}</span>
+                          <b>{person.count} buổi</b>
+                        </div>
+                        {(sessionsByPerson.get(person.name) || []).map((session, tripIndex) => (
                           <div className="trip-row" key={session.id}>
-                            <div>
-                              <strong>{session.date}</strong>
-                              <span>{session.note}</span>
+                            <div className="trip-dot">{tripIndex + 1}</div>
+                            <div className="trip-info">
+                              <strong>{session.note}</strong>
+                              <span>{session.date} · {session.participants.length} người chia</span>
                             </div>
                             <b>{money(session.perPerson)}</b>
                           </div>
