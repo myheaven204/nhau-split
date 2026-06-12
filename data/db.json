@@ -24,19 +24,6 @@
       ],
       "perPerson": 410750,
       "createdAt": "2026-06-12T20:59:12.979Z"
-    },
-    {
-      "id": "a38e1a8e-3eb5-433e-abf9-d2777af91c2d",
-      "date": "2026-06-12",
-      "note": "Quán Chill",
-      "totalAmount": 1350000,
-      "participants": [
-        "Hải",
-        "A.Tiến",
-        "Khuyên"
-      ],
-      "perPerson": 450000,
-      "createdAt": "2026-06-12T20:58:29.950Z"
     }
   ]
 }
