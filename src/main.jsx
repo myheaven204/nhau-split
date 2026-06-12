@@ -107,7 +107,7 @@ function App() {
   const maxPersonTotal = personTotals[0]?.total || 1;
 
   const monthlyDrinkers = useMemo(() => {
-    const colors = ['#f97316', '#facc15', '#22c55e', '#38bdf8', '#a78bfa', '#fb7185', '#14b8a6', '#e879f9'];
+    const colors = ['#d6a84f', '#9ca3af', '#8f6b32', '#94a3b8', '#a78b7a', '#7c8a99', '#b58a3a', '#6b7280'];
     const map = new Map();
     sessions.forEach((session) => {
       session.participants.forEach((name) => {
