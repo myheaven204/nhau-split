@@ -1,4 +1,6 @@
 {
-  "people": ["Duy", "Hải", "Tú", "Nam", "Khoa"],
+  "people": [
+    "Test"
+  ],
   "sessions": []
 }
