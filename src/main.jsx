@@ -23,6 +23,11 @@ const money = (n) => {
   const rounded = Number.isInteger(k) ? k : Math.round(k * 10) / 10;
   return `${rounded.toLocaleString('vi-VN')}K`;
 };
+const parseAmount = (value) => {
+  const digits = Number(String(value || '').replace(/[^0-9]/g, '')) || 0;
+  if (!digits) return 0;
+  return digits >= 100000 ? digits : digits * 1000;
+};
 const load = (key, fallback) => {
   try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
 };
@@ -42,6 +47,7 @@ function App() {
   const [adminPassword, setAdminPassword] = useState(() => sessionStorage.getItem('nhau-split-password') || '');
   const [loginPassword, setLoginPassword] = useState('');
   const [cloudStatus, setCloudStatus] = useState('local');
+  const [cloudLoaded, setCloudLoaded] = useState(false);
   const canEdit = isAdmin;
 
   useEffect(() => {
@@ -63,13 +69,16 @@ function App() {
           save(PAID_KEY, data.paidPeople);
         }
         setCloudStatus('cloud-loaded');
+        setCloudLoaded(true);
       })
-      .catch(() => setCloudStatus('local'));
+      .catch(() => {
+        setCloudStatus('local');
+        setCloudLoaded(true);
+      });
     return () => { cancelled = true; };
   }, []);
 
-  const totalK = Number(amountText.replace(/[^0-9]/g, '')) || 0;
-  const total = totalK * 1000;
+  const total = parseAmount(amountText);
   const perPerson = selected.length ? Math.round(total / selected.length) : 0;
 
   const stats = useMemo(() => {
@@ -139,14 +148,14 @@ function App() {
     return { total, rows, top: rows[0], chart };
   }, [sessions]);
 
-  const pushCloud = async (nextPeople, nextSessions, nextPaidPeople = paidPeople, password = adminPassword) => {
+  const pushCloud = async (nextPeople, nextSessions, nextPaidPeople = paidPeople, password = adminPassword, allowDelete = false) => {
     save(PEOPLE_KEY, nextPeople);
     save(SESSIONS_KEY, nextSessions);
     save(PAID_KEY, nextPaidPeople);
     try {
       const res = await fetch('/api/data', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-admin-password': password },
+        headers: { 'Content-Type': 'application/json', 'x-admin-password': password, 'x-allow-delete': allowDelete ? '1' : '0' },
         body: JSON.stringify({ people: nextPeople, sessions: nextSessions, paidPeople: nextPaidPeople }),
       });
       if (!res.ok) throw new Error((await res.json()).error || 'Không lưu được cloud');
@@ -160,7 +169,7 @@ function App() {
   };
 
   const persistPeople = async (next) => { setPeople(next); await pushCloud(next, sessions, paidPeople); };
-  const persistSessions = async (next) => { setSessions(next); await pushCloud(people, next, paidPeople); };
+  const persistSessions = async (next, allowDelete = false) => { setSessions(next); await pushCloud(people, next, paidPeople, adminPassword, allowDelete); };
   const persistPaidPeople = async (next) => { setPaidPeople(next); await pushCloud(people, sessions, next); };
 
   const togglePerson = (name) => {
@@ -208,6 +217,7 @@ function App() {
 
   const addSession = () => {
     if (!canEdit) return;
+    if (!cloudLoaded) return alert('Đang tải dữ liệu cloud, chờ vài giây rồi lưu lại anh nhé.');
     if (!total || !selected.length) return alert('Nhập tổng tiền và tick ít nhất 1 người anh nhé.');
     const item = {
       id: id(),
@@ -227,7 +237,7 @@ function App() {
 
   const removeSession = (sessionId) => {
     if (!canEdit) return;
-    persistSessions(sessions.filter((x) => x.id !== sessionId));
+    persistSessions(sessions.filter((x) => x.id !== sessionId), true);
   };
 
   const copySession = async (s) => {
@@ -264,8 +274,8 @@ function App() {
                 <label>Tiêu đề / nội dung kèo</label>
                 <input placeholder="VD: Lẩu bò tối thứ 7, Karaoke sau trận banh..." value={note} onChange={(e) => setNote(e.target.value)} />
 
-                <label>Tổng tiền (K)</label>
-                <input inputMode="numeric" placeholder="VD: 4000 = 4.000K" value={amountText} onChange={(e) => setAmountText(e.target.value)} />
+                <label>Tổng tiền</label>
+                <input inputMode="numeric" placeholder="VD: 1700 = 1.700K hoặc 1700000 = 1.700K" value={amountText} onChange={(e) => setAmountText(e.target.value)} />
 
                 <div className="people-head">
                   <label>Người tham gia</label>

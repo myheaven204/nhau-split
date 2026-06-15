@@ -59,7 +59,19 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Dữ liệu không hợp lệ' });
       }
 
-      const { sha } = await getFile(githubToken);
+      const allowDelete = req.headers['x-allow-delete'] === '1';
+      const { data: currentData, sha } = await getFile(githubToken);
+      const currentSessions = Array.isArray(currentData?.sessions) ? currentData.sessions : [];
+      const nextIds = new Set(data.sessions.map((session) => session.id));
+      const wouldDropExistingSession = currentSessions.some((session) => !nextIds.has(session.id));
+      if (wouldDropExistingSession && !allowDelete) {
+        return res.status(409).json({
+          error: 'Dữ liệu trên cloud mới hơn. Tải lại trang rồi lưu lại để tránh mất kèo cũ.',
+          currentSessionCount: currentSessions.length,
+          nextSessionCount: data.sessions.length,
+        });
+      }
+
       const putRes = await fetch(apiUrl, {
         method: 'PUT',
         headers: jsonHeaders({ Authorization: `Bearer ${githubToken}`, 'Content-Type': 'application/json' }),
