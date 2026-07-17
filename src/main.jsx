@@ -66,13 +66,30 @@ function App() {
   const [selected, setSelected] = useState([]);
   const [newPerson, setNewPerson] = useState('');
   const [expandedPerson, setExpandedPerson] = useState(null);
-  const [cloudStatus, setCloudStatus] = useState('lưu trên máy');
-  const canEdit = true;
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [cloudStatus, setCloudStatus] = useState('đang tải dữ liệu');
+  const [cloudLoaded, setCloudLoaded] = useState(false);
+  const canEdit = isAdmin;
 
   useEffect(() => {
-    save(PEOPLE_KEY, people);
-    save(SESSIONS_KEY, sessions);
-    save(SETTLEMENTS_KEY, settlements);
+    let cancelled = false;
+    fetch('/api/data')
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error('Không tải được cloud')))
+      .then((data) => {
+        if (cancelled) return;
+        if (Array.isArray(data.people) && data.people.length) { setPeople(data.people); save(PEOPLE_KEY, data.people); }
+        if (Array.isArray(data.sessions)) { setSessions(data.sessions); save(SESSIONS_KEY, data.sessions); }
+        if (data.settlements && typeof data.settlements === 'object' && !Array.isArray(data.settlements)) { setSettlements(data.settlements); save(SETTLEMENTS_KEY, data.settlements); }
+        setCloudStatus('dữ liệu cloud');
+        setCloudLoaded(true);
+      })
+      .catch(() => {
+        setCloudStatus('dữ liệu trên máy');
+        setCloudLoaded(true);
+      });
+    return () => { cancelled = true; };
   }, []);
 
   const total = parseAmount(amountText);
@@ -162,10 +179,48 @@ function App() {
     return { total, rows, top: rows[0], chart };
   }, [filteredSessions]);
 
-  const markSaved = () => setCloudStatus('đã lưu trên máy');
-  const persistPeople = (next) => { setPeople(next); save(PEOPLE_KEY, next); markSaved(); };
-  const persistSessions = (next) => { setSessions(next); save(SESSIONS_KEY, next); markSaved(); };
-  const persistSettlements = (next) => { setSettlements(next); save(SETTLEMENTS_KEY, next); markSaved(); };
+  const pushCloud = async (nextPeople, nextSessions, nextSettlements = settlements, allowDelete = false) => {
+    save(PEOPLE_KEY, nextPeople);
+    save(SESSIONS_KEY, nextSessions);
+    save(SETTLEMENTS_KEY, nextSettlements);
+    try {
+      const response = await fetch('/api/data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-password': adminPassword, 'x-allow-delete': allowDelete ? '1' : '0' },
+        body: JSON.stringify({ people: nextPeople, sessions: nextSessions, settlements: nextSettlements }),
+      });
+      if (!response.ok) throw new Error((await response.json()).error || 'Không lưu được dữ liệu');
+      setCloudStatus('đã lưu cloud');
+      return true;
+    } catch (error) {
+      setCloudStatus('lỗi lưu cloud');
+      alert(error.message);
+      return false;
+    }
+  };
+
+  const persistPeople = async (next) => { setPeople(next); await pushCloud(next, sessions, settlements); };
+  const persistSessions = async (next, allowDelete = false) => { setSessions(next); await pushCloud(people, next, settlements, allowDelete); };
+  const persistSettlements = async (next) => { setSettlements(next); await pushCloud(people, sessions, next); };
+
+  const loginAdmin = async () => {
+    const password = loginPassword.trim();
+    if (!password) return;
+    try {
+      const response = await fetch('/api/data?verify=1', { method: 'POST', headers: { 'x-admin-password': password } });
+      if (!response.ok) throw new Error((await response.json()).error || 'Sai mật khẩu admin');
+      setAdminPassword(password);
+      setIsAdmin(true);
+      setLoginPassword('');
+    } catch (error) {
+      alert(error.message);
+    }
+  };
+
+  const logoutAdmin = () => {
+    setAdminPassword('');
+    setIsAdmin(false);
+  };
 
   const togglePerson = (name) => {
     setSelected((cur) => cur.includes(name) ? cur.filter((x) => x !== name) : [...cur, name]);
@@ -181,10 +236,12 @@ function App() {
 
   const removePerson = (name) => {
     if (!canEdit) return;
-    persistPeople(people.filter((person) => person !== name));
+    const nextPeople = people.filter((person) => person !== name);
     const nextSettlements = Object.fromEntries(Object.entries(settlements).map(([key, records]) => [key, records.filter((record) => record.name !== name)]));
-    persistSettlements(nextSettlements);
+    setPeople(nextPeople);
+    setSettlements(nextSettlements);
     setSelected(selected.filter((person) => person !== name));
+    pushCloud(nextPeople, sessions, nextSettlements);
   };
 
   const togglePaid = (name) => {
@@ -205,6 +262,7 @@ function App() {
 
   const addSession = () => {
     if (!canEdit) return;
+    if (!cloudLoaded) return alert('Đang tải dữ liệu, chờ một chút rồi lưu.');
     if (!total || !selected.length) return alert('Nhập tổng tiền và tick ít nhất 1 người anh nhé.');
     const item = {
       id: id(),
@@ -239,8 +297,8 @@ function App() {
         <div>
           <p className="eyebrow">🍻 Sổ chia kèo anh em</p>
           <h1>Kèo Nhậu</h1>
-          <p className="sub">Mọi người đều có thể ghi kèo, sửa thành viên và xoá nhật ký.</p>
-          <div className="admin-pill">🔓 Mở toàn bộ quyền sửa · {cloudStatus}</div>
+          <p className="sub">Ai cũng xem được. Chỉ admin đăng nhập mới ghi kèo, sửa thành viên và xoá nhật ký.</p>
+          <div className="admin-pill">{canEdit ? '🔓 Admin đang mở quyền sửa' : '👀 Chế độ xem công khai'} · {cloudStatus}</div>
         </div>
         <div className="stats">
           <Stat icon={<ReceiptText />} label="Tổng tiền" value={money(stats.totalAmount)} />
@@ -252,7 +310,7 @@ function App() {
       <section className="dashboard-layout">
         <div className="left-stack">
           <div className="card form-card">
-            {(
+            {canEdit ? (
               <>
                 <h2><Plus size={20} /> Ghi kèo mới</h2>
                 <label>Ngày đi nhậu</label>
@@ -283,7 +341,15 @@ function App() {
                 </div>
 
                 <button className="primary" onClick={addSession}>Lưu buổi nhậu</button>
+                <button className="ghost" onClick={logoutAdmin}>Đăng xuất admin</button>
               </>
+            ) : (
+              <div className="login-card">
+                <h2>🔐 Admin chỉnh sửa</h2>
+                <p>Nhập mật khẩu để thêm kèo, thêm người, đánh dấu thanh toán hoặc xoá dữ liệu.</p>
+                <input type="password" placeholder="Mật khẩu admin" value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && loginAdmin()} />
+                <button className="primary" onClick={loginAdmin}>Mở quyền sửa</button>
+              </div>
             )}
           </div>
 
