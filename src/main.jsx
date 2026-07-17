@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Plus, Trash2, Users, CalendarDays, ReceiptText, Copy, UserPlus, Coins, Trophy } from 'lucide-react';
+import seedData from '../data/db.json';
 import './styles.css';
 
 const PEOPLE_KEY = 'nhau-split.people.v1';
 const SESSIONS_KEY = 'nhau-split.sessions.v1';
 const PAID_KEY = 'nhau-split.paid.v1';
+const SETTLEMENTS_KEY = 'nhau-split.settlements.v1';
 const DEFAULT_PEOPLE = ['Duy', 'Hải', 'Tú', 'Nam', 'Khoa'];
 
 const today = () => {
@@ -32,76 +34,88 @@ const load = (key, fallback) => {
   try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
 };
 const save = (key, value) => localStorage.setItem(key, JSON.stringify(value));
+const periodKey = (startDate, endDate) => `${startDate || 'start'}:${endDate || 'end'}`;
 
 function App() {
-  const [people, setPeople] = useState(() => load(PEOPLE_KEY, DEFAULT_PEOPLE));
-  const [sessions, setSessions] = useState(() => load(SESSIONS_KEY, []));
-  const [paidPeople, setPaidPeople] = useState(() => load(PAID_KEY, []));
+  const [people, setPeople] = useState(() => load(PEOPLE_KEY, seedData.people || DEFAULT_PEOPLE));
+  const [sessions, setSessions] = useState(() => load(SESSIONS_KEY, seedData.sessions || []));
+  const [settlements, setSettlements] = useState(() => {
+    const sessionsAtLoad = load(SESSIONS_KEY, seedData.sessions || []);
+    const withSessionIds = (records) => records.map((record) => ({
+      ...record,
+      sessionIds: Array.isArray(record.sessionIds)
+        ? record.sessionIds
+        : sessionsAtLoad.filter((session) => session.participants.includes(record.name)).map((session) => session.id),
+    }));
+    const saved = load(SETTLEMENTS_KEY, null);
+    if (saved && typeof saved === 'object' && !Array.isArray(saved)) {
+      return Object.fromEntries(Object.entries(saved).map(([key, records]) => [key, withSessionIds(records)]));
+    }
+    const legacyPaidPeople = load(PAID_KEY, seedData.paidPeople || []);
+    return legacyPaidPeople.length ? {
+      [periodKey('', '')]: legacyPaidPeople.map((name) => ({
+        name,
+        paidAt: new Date().toISOString(),
+        sessionIds: sessionsAtLoad.filter((session) => session.participants.includes(name)).map((session) => session.id),
+      })),
+    } : {};
+  });
   const [date, setDate] = useState(today());
   const [note, setNote] = useState('');
   const [amountText, setAmountText] = useState('');
   const [selected, setSelected] = useState([]);
   const [newPerson, setNewPerson] = useState('');
   const [expandedPerson, setExpandedPerson] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(() => sessionStorage.getItem('nhau-split-admin') === '1');
-  const [adminPassword, setAdminPassword] = useState(() => sessionStorage.getItem('nhau-split-password') || '');
-  const [loginPassword, setLoginPassword] = useState('');
-  const [cloudStatus, setCloudStatus] = useState('local');
-  const [cloudLoaded, setCloudLoaded] = useState(false);
-  const canEdit = isAdmin;
+  const [cloudStatus, setCloudStatus] = useState('lưu trên máy');
+  const canEdit = true;
 
   useEffect(() => {
-    let cancelled = false;
-    fetch('/api/data')
-      .then((res) => res.ok ? res.json() : Promise.reject(new Error('no cloud')))
-      .then((data) => {
-        if (cancelled) return;
-        if (Array.isArray(data.people) && data.people.length) {
-          setPeople(data.people);
-          save(PEOPLE_KEY, data.people);
-        }
-        if (Array.isArray(data.sessions)) {
-          setSessions(data.sessions);
-          save(SESSIONS_KEY, data.sessions);
-        }
-        if (Array.isArray(data.paidPeople)) {
-          setPaidPeople(data.paidPeople);
-          save(PAID_KEY, data.paidPeople);
-        }
-        setCloudStatus('cloud-loaded');
-        setCloudLoaded(true);
-      })
-      .catch(() => {
-        setCloudStatus('local');
-        setCloudLoaded(true);
-      });
-    return () => { cancelled = true; };
+    save(PEOPLE_KEY, people);
+    save(SESSIONS_KEY, sessions);
+    save(SETTLEMENTS_KEY, settlements);
   }, []);
 
   const total = parseAmount(amountText);
   const perPerson = selected.length ? Math.round(total / selected.length) : 0;
 
-  const stats = useMemo(() => {
-    const totalAmount = sessions.reduce((s, x) => s + x.totalAmount, 0);
-    const totalCount = sessions.length;
-    const totalShares = sessions.reduce((s, x) => s + x.participants.length, 0);
-    return { totalAmount, totalCount, totalShares };
-  }, [sessions]);
+  const filteredSessions = sessions;
+  const activePeriodKey = periodKey('', '');
+  const paidRecords = settlements[activePeriodKey] || [];
+  const paidSessionIdsByPerson = useMemo(() => {
+    const map = new Map();
+    paidRecords.forEach((record) => {
+      const ids = map.get(record.name) || new Set();
+      (record.sessionIds || []).forEach((sessionId) => ids.add(sessionId));
+      map.set(record.name, ids);
+    });
+    return map;
+  }, [paidRecords]);
+  const isSessionPaid = (sessionId, name) => paidSessionIdsByPerson.get(name)?.has(sessionId) || false;
 
-  const personTotals = useMemo(() => {
-    const map = new Map(people.map((name) => [name, { name, total: 0, count: 0 }]));
-    sessions.forEach((session) => {
+  const stats = useMemo(() => {
+    const totalAmount = filteredSessions.reduce((sum, session) => sum + session.totalAmount, 0);
+    const totalCount = filteredSessions.length;
+    const totalShares = filteredSessions.reduce((sum, session) => sum + session.participants.length, 0);
+    return { totalAmount, totalCount, totalShares };
+  }, [filteredSessions]);
+
+  const { personTotals, settledPersonTotals } = useMemo(() => {
+    const outstanding = new Map(people.map((name) => [name, { name, total: 0, count: 0 }]));
+    const settled = new Map(people.map((name) => [name, { name, total: 0, count: 0 }]));
+    filteredSessions.forEach((session) => {
       session.participants.forEach((name) => {
-        const row = map.get(name) || { name, total: 0, count: 0 };
+        const target = isSessionPaid(session.id, name) ? settled : outstanding;
+        const row = target.get(name) || { name, total: 0, count: 0 };
         row.total += session.perPerson;
         row.count += 1;
-        map.set(name, row);
+        target.set(name, row);
       });
     });
-    return [...map.values()]
+    const sortRows = (rows) => [...rows.values()]
       .filter((person) => person.total > 0 || person.count > 0)
       .sort((a, b) => b.total - a.total || b.count - a.count || a.name.localeCompare(b.name, 'vi'));
-  }, [people, sessions]);
+    return { personTotals: sortRows(outstanding), settledPersonTotals: sortRows(settled) };
+  }, [people, filteredSessions, paidSessionIdsByPerson]);
 
   const sortedSessions = useMemo(() => {
     return [...sessions].sort((a, b) => {
@@ -114,7 +128,7 @@ function App() {
   const sessionsByPerson = useMemo(() => {
     const map = new Map();
     personTotals.forEach((person) => {
-      map.set(person.name, sortedSessions.filter((session) => session.participants.includes(person.name)));
+      map.set(person.name, filteredSessions.filter((session) => session.participants.includes(person.name) && !isSessionPaid(session.id, person.name)));
     });
     return map;
   }, [personTotals, sortedSessions]);
@@ -124,7 +138,7 @@ function App() {
   const monthlyDrinkers = useMemo(() => {
     const colors = ['#d6a84f', '#9ca3af', '#8f6b32', '#94a3b8', '#a78b7a', '#7c8a99', '#b58a3a', '#6b7280'];
     const map = new Map();
-    sessions.forEach((session) => {
+    filteredSessions.forEach((session) => {
       session.participants.forEach((name) => {
         const row = map.get(name) || { name, count: 0 };
         row.count += 1;
@@ -146,52 +160,15 @@ function App() {
       ? `conic-gradient(${rows.map((row) => `${row.color} ${row.start}deg ${row.end}deg`).join(', ')})`
       : 'conic-gradient(rgba(255,255,255,.12) 0deg 360deg)';
     return { total, rows, top: rows[0], chart };
-  }, [sessions]);
+  }, [filteredSessions]);
 
-  const pushCloud = async (nextPeople, nextSessions, nextPaidPeople = paidPeople, password = adminPassword, allowDelete = false) => {
-    save(PEOPLE_KEY, nextPeople);
-    save(SESSIONS_KEY, nextSessions);
-    save(PAID_KEY, nextPaidPeople);
-    try {
-      const res = await fetch('/api/data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-admin-password': password, 'x-allow-delete': allowDelete ? '1' : '0' },
-        body: JSON.stringify({ people: nextPeople, sessions: nextSessions, paidPeople: nextPaidPeople }),
-      });
-      if (!res.ok) throw new Error((await res.json()).error || 'Không lưu được cloud');
-      setCloudStatus('cloud-saved');
-      return true;
-    } catch (error) {
-      setCloudStatus('local-only');
-      console.warn(error);
-      return false;
-    }
-  };
-
-  const persistPeople = async (next) => { setPeople(next); await pushCloud(next, sessions, paidPeople); };
-  const persistSessions = async (next, allowDelete = false) => { setSessions(next); await pushCloud(people, next, paidPeople, adminPassword, allowDelete); };
-  const persistPaidPeople = async (next) => { setPaidPeople(next); await pushCloud(people, sessions, next); };
+  const markSaved = () => setCloudStatus('đã lưu trên máy');
+  const persistPeople = (next) => { setPeople(next); save(PEOPLE_KEY, next); markSaved(); };
+  const persistSessions = (next) => { setSessions(next); save(SESSIONS_KEY, next); markSaved(); };
+  const persistSettlements = (next) => { setSettlements(next); save(SETTLEMENTS_KEY, next); markSaved(); };
 
   const togglePerson = (name) => {
     setSelected((cur) => cur.includes(name) ? cur.filter((x) => x !== name) : [...cur, name]);
-  };
-
-  const loginAdmin = async () => {
-    if (!loginPassword.trim()) return;
-    const ok = await pushCloud(people, sessions, paidPeople, loginPassword.trim());
-    if (!ok) return alert('Sai mật khẩu admin hoặc cloud chưa cấu hình.');
-    setAdminPassword(loginPassword.trim());
-    sessionStorage.setItem('nhau-split-admin', '1');
-    sessionStorage.setItem('nhau-split-password', loginPassword.trim());
-    setIsAdmin(true);
-    setLoginPassword('');
-  };
-
-  const logoutAdmin = () => {
-    sessionStorage.removeItem('nhau-split-admin');
-    sessionStorage.removeItem('nhau-split-password');
-    setAdminPassword('');
-    setIsAdmin(false);
   };
 
   const addPerson = () => {
@@ -204,20 +181,30 @@ function App() {
 
   const removePerson = (name) => {
     if (!canEdit) return;
-    persistPeople(people.filter((x) => x !== name));
-    persistPaidPeople(paidPeople.filter((x) => x !== name));
-    setSelected(selected.filter((x) => x !== name));
+    persistPeople(people.filter((person) => person !== name));
+    const nextSettlements = Object.fromEntries(Object.entries(settlements).map(([key, records]) => [key, records.filter((record) => record.name !== name)]));
+    persistSettlements(nextSettlements);
+    setSelected(selected.filter((person) => person !== name));
   };
 
   const togglePaid = (name) => {
-    if (!canEdit) return;
-    const next = paidPeople.includes(name) ? paidPeople.filter((x) => x !== name) : [...paidPeople, name];
-    persistPaidPeople(next);
+    const sessionIds = filteredSessions
+      .filter((session) => session.participants.includes(name) && !isSessionPaid(session.id, name))
+      .map((session) => session.id);
+    if (!sessionIds.length) return;
+    persistSettlements({
+      ...settlements,
+      [activePeriodKey]: [...paidRecords, { name, sessionIds, paidAt: new Date().toISOString() }],
+    });
+    setExpandedPerson(null);
+  };
+
+  const undoPaid = (name) => {
+    persistSettlements({ ...settlements, [activePeriodKey]: paidRecords.filter((record) => record.name !== name) });
   };
 
   const addSession = () => {
     if (!canEdit) return;
-    if (!cloudLoaded) return alert('Đang tải dữ liệu cloud, chờ vài giây rồi lưu lại anh nhé.');
     if (!total || !selected.length) return alert('Nhập tổng tiền và tick ít nhất 1 người anh nhé.');
     const item = {
       id: id(),
@@ -252,8 +239,8 @@ function App() {
         <div>
           <p className="eyebrow">🍻 Sổ chia kèo anh em</p>
           <h1>Kèo Nhậu</h1>
-          <p className="sub">Ai cũng xem được. Chỉ admin mới đăng nhập để ghi kèo, sửa người và xoá nhật ký.</p>
-          <div className="admin-pill">{canEdit ? '🔓 Admin đang mở quyền sửa' : '👀 Chế độ xem công khai'} · {cloudStatus}</div>
+          <p className="sub">Mọi người đều có thể ghi kèo, sửa thành viên và xoá nhật ký.</p>
+          <div className="admin-pill">🔓 Mở toàn bộ quyền sửa · {cloudStatus}</div>
         </div>
         <div className="stats">
           <Stat icon={<ReceiptText />} label="Tổng tiền" value={money(stats.totalAmount)} />
@@ -265,7 +252,7 @@ function App() {
       <section className="dashboard-layout">
         <div className="left-stack">
           <div className="card form-card">
-            {canEdit ? (
+            {(
               <>
                 <h2><Plus size={20} /> Ghi kèo mới</h2>
                 <label>Ngày đi nhậu</label>
@@ -296,21 +283,14 @@ function App() {
                 </div>
 
                 <button className="primary" onClick={addSession}>Lưu buổi nhậu</button>
-                <button className="ghost" onClick={logoutAdmin}>Đăng xuất admin</button>
               </>
-            ) : (
-              <div className="login-card">
-                <h2>🔐 Admin chỉnh sửa</h2>
-                <p>Nhập mật khẩu để thêm kèo, thêm người hoặc xoá dữ liệu. Khách xem web không cần login.</p>
-                <input type="password" placeholder="Mật khẩu admin" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && loginAdmin()} />
-                <button className="primary" onClick={loginAdmin}>Mở quyền sửa</button>
-              </div>
             )}
           </div>
 
           <div className="card totals">
-            <h2><Coins size={20} /> Tổng tiền từng người</h2>
-            {!personTotals.length && <p className="empty">Chưa có dữ liệu để cộng tổng.</p>}
+            <h2><Coins size={20} /> Cần thanh toán</h2>
+            <p className="period-summary">Toàn bộ lịch sử · {filteredSessions.length} kèo · {settledPersonTotals.length} người đã trả</p>
+            {!personTotals.length && <p className="empty">Không còn khoản cần thanh toán.</p>}
             {!!personTotals.length && (
               <div className="totals-list">
                 <div className="totals-head"><span></span><b>Done</b></div>
@@ -326,8 +306,8 @@ function App() {
                         </div>
                         <b>{money(person.total)}</b>
                       </button>
-                      <label className={paidPeople.includes(person.name) ? 'paid-check active' : 'paid-check'} title={paidPeople.includes(person.name) ? 'Đã thanh toán' : 'Chưa thanh toán'}>
-                        <input type="checkbox" checked={paidPeople.includes(person.name)} disabled={!canEdit} onChange={() => togglePaid(person.name)} />
+                      <label className="paid-check" title="Đánh dấu đã thanh toán các kèo còn lại">
+                        <input type="checkbox" checked={false} disabled={!canEdit} onChange={() => togglePaid(person.name)} />
                       </label>
                     </div>
                     {expandedPerson === person.name && (
@@ -351,6 +331,17 @@ function App() {
                   </div>
                 ))}
               </div>
+            )}
+            {!!settledPersonTotals.length && (
+              <details className="settled-list">
+                <summary>Đã thanh toán ({settledPersonTotals.length})</summary>
+                {settledPersonTotals.map((person) => (
+                  <div className="settled-row" key={person.name}>
+                    <span>{person.name}</span><b>{money(person.total)}</b>
+                    <button onClick={() => undoPaid(person.name)}>Hoàn tác</button>
+                  </div>
+                ))}
+              </details>
             )}
           </div>
         </div>
@@ -425,7 +416,13 @@ function App() {
               <div className="session-main">
                 <div>
                   <strong>{s.date} — {s.note}</strong>
-                  <p>{s.participants.join(', ')}</p>
+                  <div className="participant-statuses">
+                    {s.participants.map((name) => (
+                      <span className={isSessionPaid(s.id, name) ? 'participant-status paid' : 'participant-status'} key={name}>
+                        {name} · {isSessionPaid(s.id, name) ? 'Đã thanh toán' : 'Chưa thanh toán'}
+                      </span>
+                    ))}
+                  </div>
                 </div>
                 <div className="amounts">
                   <span>Tổng: {money(s.totalAmount)}</span>
