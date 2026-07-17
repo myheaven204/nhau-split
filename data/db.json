@@ -135,32 +135,6 @@
   "settlements": {
     "start:end": [
       {
-        "name": "Hải",
-        "paidAt": "2026-07-17T05:41:16.341Z",
-        "sessionIds": [
-          "047f2b8a-4ccc-4be5-86f4-1ff60cb1814c",
-          "d5af9e6a-6128-4429-9fb5-20b182cb7acf",
-          "11f619b8-e9f1-44d7-a91b-3d9d35ebdb52",
-          "0273e9a0-131d-4627-b9cd-b2311808e10d",
-          "b223b7bd-6299-4da9-88af-5d59a9933392",
-          "19ffba63-d52f-496a-95ef-ad851fcefc7f",
-          "7924b9d4-ec1a-4496-bd07-9bb22c6c0bff"
-        ]
-      },
-      {
-        "name": "Khuyên",
-        "sessionIds": [
-          "047f2b8a-4ccc-4be5-86f4-1ff60cb1814c",
-          "d5af9e6a-6128-4429-9fb5-20b182cb7acf",
-          "11f619b8-e9f1-44d7-a91b-3d9d35ebdb52",
-          "0273e9a0-131d-4627-b9cd-b2311808e10d",
-          "b223b7bd-6299-4da9-88af-5d59a9933392",
-          "19ffba63-d52f-496a-95ef-ad851fcefc7f",
-          "7924b9d4-ec1a-4496-bd07-9bb22c6c0bff"
-        ],
-        "paidAt": "2026-07-17T05:41:35.317Z"
-      },
-      {
         "name": "Dũng",
         "sessionIds": [
           "d5af9e6a-6128-4429-9fb5-20b182cb7acf",
