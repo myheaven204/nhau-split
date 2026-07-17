@@ -146,25 +146,11 @@
         "paidAt": "2026-07-17T05:41:35.876Z"
       },
       {
-        "name": "A.Khương",
-        "sessionIds": [
-          "047f2b8a-4ccc-4be5-86f4-1ff60cb1814c"
-        ],
-        "paidAt": "2026-07-17T05:41:37.094Z"
-      },
-      {
         "name": "C. Xô",
         "sessionIds": [
           "047f2b8a-4ccc-4be5-86f4-1ff60cb1814c"
         ],
         "paidAt": "2026-07-17T05:41:37.463Z"
-      },
-      {
-        "name": "Thu",
-        "sessionIds": [
-          "047f2b8a-4ccc-4be5-86f4-1ff60cb1814c"
-        ],
-        "paidAt": "2026-07-17T05:41:37.814Z"
       }
     ]
   }
