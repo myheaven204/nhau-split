@@ -116,34 +116,6 @@
       ],
       "perPerson": 407143,
       "createdAt": "2026-07-10T05:42:58.911Z"
-    },
-    {
-      "id": "d5af9e6a-6128-4429-9fb5-20b182cb7acf",
-      "date": "2026-06-24",
-      "note": "Quán Ốc - Thây Thạnh",
-      "totalAmount": 1200000,
-      "participants": [
-        "Hải",
-        "A.Tiến",
-        "Ding",
-        "Khuyên"
-      ],
-      "perPerson": 300000,
-      "createdAt": "2026-06-25T04:24:47.794Z"
-    },
-    {
-      "id": "11f619b8-e9f1-44d7-a91b-3d9d35ebdb52",
-      "date": "2026-06-16",
-      "note": "Quán bò nướng",
-      "totalAmount": 1700000,
-      "participants": [
-        "Hải",
-        "A.Tiến",
-        "Ding",
-        "Khuyên"
-      ],
-      "perPerson": 425000,
-      "createdAt": "2026-06-15T17:55:58.081Z"
     }
   ],
   "paidPeople": [
