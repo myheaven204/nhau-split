@@ -187,20 +187,6 @@
       ],
       "perPerson": 450000,
       "createdAt": "2026-06-12T20:59:44.673Z"
-    },
-    {
-      "id": "7924b9d4-ec1a-4496-bd07-9bb22c6c0bff",
-      "date": "2026-05-04",
-      "note": "Quán Bò Nướng",
-      "totalAmount": 1643000,
-      "participants": [
-        "Hải",
-        "A.Tiến",
-        "Ding",
-        "Khuyên"
-      ],
-      "perPerson": 410750,
-      "createdAt": "2026-06-12T20:59:12.979Z"
     }
   ],
   "paidPeople": [
