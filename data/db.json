@@ -144,36 +144,6 @@
       ],
       "perPerson": 425000,
       "createdAt": "2026-06-15T17:55:58.081Z"
-    },
-    {
-      "id": "0273e9a0-131d-4627-b9cd-b2311808e10d",
-      "date": "2026-06-06",
-      "note": "Tây Thạnh",
-      "totalAmount": 1945000,
-      "participants": [
-        "Hải",
-        "A.Tiến",
-        "Ding",
-        "Khuyên"
-      ],
-      "perPerson": 486250,
-      "createdAt": "2026-06-12T21:00:31.902Z"
-    },
-    {
-      "id": "b223b7bd-6299-4da9-88af-5d59a9933392",
-      "date": "2026-05-19",
-      "note": "Quán Bò Nướng",
-      "totalAmount": 2500000,
-      "participants": [
-        "Hải",
-        "A.Tiến",
-        "Ding",
-        "Khuyên",
-        "Tuyền",
-        "Bồ Dũng"
-      ],
-      "perPerson": 416667,
-      "createdAt": "2026-06-12T21:00:11.444Z"
     }
   ],
   "paidPeople": [
