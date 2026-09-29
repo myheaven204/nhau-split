@@ -20,6 +20,17 @@
   ],
   "sessions": [
     {
+      "id": "0f0fbd05-9711-4f9d-b68e-3f15fbce0988",
+      "date": "2026-09-22",
+      "note": "Nhậu Nhà",
+      "totalAmount": 300000,
+      "participants": [
+        "Hải"
+      ],
+      "perPerson": 300000,
+      "createdAt": "2026-09-29T05:08:02.948Z"
+    },
+    {
       "id": "b7e77548-5d80-4768-b603-caf3bc0663ba",
       "date": "2026-08-15",
       "note": "Thôi Nôi Nhung",
