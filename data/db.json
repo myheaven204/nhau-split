@@ -20,6 +20,17 @@
   ],
   "sessions": [
     {
+      "id": "e04e594b-5be8-457c-bfe1-cfcbe5871b4e",
+      "date": "2026-10-05",
+      "note": "Bò Gia Lai",
+      "totalAmount": 385000,
+      "participants": [
+        "Hải"
+      ],
+      "perPerson": 385000,
+      "createdAt": "2026-10-07T04:37:20.596Z"
+    },
+    {
       "id": "d0aad70b-d55c-42e5-a452-ac6d5407d7ce",
       "date": "2026-09-29",
       "note": "Nhậu Nhà",
